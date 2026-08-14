@@ -1,0 +1,88 @@
+log_filename: "amber_baseline_homo_no_mg.log"
+out_dir: "out"
+
+model:
+  name: "amber_baseline_homo_no_mg"
+  init_weights: True
+  encoder:
+    uri: "dinov2_vitb14_reg" # 12 layers total, 384 embed dim
+    hub: "facebookresearch/dinov2"
+    freeze_layers: False # True -> freeze all layers | False -> freeze none, i.e. fine-tune the entire model | Int -> (Number of layers to freeze)
+    features_approach: "cls_with_patches"
+  projector:
+    expansion_factor: 4 # from image space to text space
+  decoder:
+    n_layers: 12
+    n_heads: 12 # 768/12 = 64 per head
+    embed_dim: 768
+    feedforward_dim: 3072 # 768 * 4
+    block_size: 256 # NOTE: This should match the tokenizer block size. GPT2 uses 1024, but we use 256 to save memory. Just copy embeddings up to 256
+    dropout: 0.2
+    bias: True # like gpt2
+    init_from_pretrained: True # If True, the decoder will be initialized from the smaller gpt2 model
+    freeze_pretrained_layers: False # True -> freeze all layers | False -> freeze none, i.e. fine-tune the entire model
+
+data:
+  imgs_shape: [ 512, 512 ]
+  img_resize: 560
+  norm_mean: [ 0.485, 0.456, 0.406 ]
+  norm_std: [ 0.229, 0.224, 0.225 ]
+  grayscale_channel: False
+  train_csv_path: "../data/report_generation_split/all-rg-no-mg-train.csv"
+  train_imgs_path: "../data/report_generation_split/all-rg-no-mg-train.bin"
+  test_csv_path: "../data/report_generation_split/all-rg-no-mg-test.csv"
+  test_imgs_path: "../data/report_generation_split/all-rg-no-mg-test.bin"
+  val_csv_path: "../data/report_generation_split/all-rg-no-mg-val.csv"
+  val_imgs_path: "../data/report_generation_split/all-rg-no-mg-val.bin"
+
+tokenizer:
+  pre_trained_tokenizer: "openai-community/gpt2"
+  shuffle_findings: True # If True, the decoder will shuffle the findings in the report. This is useful for training with shuffled findings
+  block_size: 256 # NOTE: This should match the decoder block size
+
+loss_fn:
+  name: "ce_rg"
+  label_smoothing: 0.0 # smoothing set to none to avoid perplexity
+
+optimizer:
+  name: "adamw"
+  lr: 0.0003 # 3e-4
+  weight_decay: 0.1
+  encoder:
+    lr: 0.0003 # 3e-4
+    weight_decay: 0.1
+  decoder: # projector will belong to the decoder
+    lr: 0.0003 # 3e-4
+    weight_decay: 0.1
+
+lr_scheduler:
+  name: "linear_warmup_with_cosine_decay"
+  warmup_iters: 100 # 5% of max_iters
+  lr_decay_iters: 2000 # ~the same as max_iters per chinchilla
+  min_lr_scale: 0.1 # 3e-5 0.1 of the initial lr per chinchilla
+
+trainer:
+  precision: "bfloat16"
+  batch_size: 10
+  accumulate_grad_batches: 64
+  max_iters: 2000 # defined based on the time it takes for gradient accumulation and considering a cap of 6 hours per seed
+
+  val_metrics_n_samples: 100
+  eval_interval: 100 # eval every 100 effective batches
+  eval_batch_size: 10
+  eval_iters: 10 # NOTE: Not applied on inference. At inference (estimate_val_metrics) we just the batch size
+
+  log_interval: 10 # log every 10 effective step (so after each batch)
+  gradient_clip_val: 1.0 # no gradient clipping, since we observed it was observed constante pre-clip norms in the order of 10s-100s
+
+timer:
+  duration: 21600 # 6 hours max
+
+early_stopper:
+  patience: 5 # How many evaluations to wait without improvement before stopping?
+  min_delta: 0.001
+  stopping_threshold: 0.001
+  check_finite: True
+
+wandb:
+  project: "report_generation_validation_dinov2_backbone_standard_decoder"

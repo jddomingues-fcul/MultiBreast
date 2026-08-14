@@ -1,0 +1,21 @@
+wandb:
+  project: "report_generation_validation_dinov2_backbone_standard_decoder"
+
+model:
+  class_name: "amber"
+  run: "out/rpmtw6gm/ckpt.pt"
+  name: "CLTLE 1 - Amber baseline"
+  norm_mean: [ 0.485, 0.456, 0.406 ]
+  norm_std: [ 0.229, 0.224, 0.225 ]
+
+test_data:
+  imgs_shape: [ 512, 512 ]
+  img_resize: 560
+  imgs_path: "../data/report_generation_split/cesm-rg-test.bin"
+  csv_path: "../data/report_generation_split/cesm-rg-test.csv"
+  grayscale_channel: False
+
+trainer:
+  batch_size: 2048
+  accelerator: "gpu"
+  precision: "bfloat16"

@@ -1,0 +1,27 @@
+wandb:
+  project: "report_generation_validation_dinov2_backbone_standard_decoder"
+
+baseline_model:
+  runs: ["olo52nv9", "olo52nv9", "olo52nv9"]
+  norm_mean: [ 0.485, 0.456, 0.406 ]
+  norm_std: [ 0.229, 0.224, 0.225 ]
+
+challenger_model:
+  runs: ["8ukb82fx", "8ukb82fx", "8ukb82fx"]
+  norm_mean: [ 0.485, 0.456, 0.406 ]
+  norm_std: [ 0.229, 0.224, 0.225 ]
+
+test_data:
+  imgs_shape: [ 512, 512 ]
+  img_resize: 560
+  imgs_path: "../data/report_generation_split/us-rg-test.bin"
+  csv_path: "../data/report_generation_split/us-rg-test.csv"
+  grayscale_channel: False
+
+trainer:
+  batch_size: 64
+  iters: 11
+  accelerator: "gpu"
+  precision: "bf16-mixed"
+
+# Sampling number = 664 => 99% CI, Pred: 50%, 5% error margin
